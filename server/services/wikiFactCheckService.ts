@@ -24,9 +24,9 @@ export async function factCheckStatement(statement: string, context?: string): P
       };
     }
     
-    // Get content extracts for the top articles
+    // Get content extracts for the top articles (increased to 10)
     const articles = await Promise.all(
-      searchResults.slice(0, 3).map(result => getWikipediaExtract(result.pageid))
+      searchResults.slice(0, 10).map(result => getWikipediaExtract(result.pageid))
     );
     
     // Create sources from the articles
@@ -96,6 +96,8 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
     action: 'query',
     list: 'search',
     srsearch: searchTerm,
+    srlimit: '20', // Increased limit to get more results
+    sroffset: '0',
     format: 'json',
     origin: '*'
   });
@@ -106,6 +108,40 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
   }
   
   const data = await response.json();
+
+  // Also search for contradictory information by adding "not" to the search term
+  const contradictorySearchTerm = `not ${searchTerm}`;
+  const contradictoryParams = new URLSearchParams({
+    action: 'query',
+    list: 'search',
+    srsearch: contradictorySearchTerm,
+    srlimit: '10',
+    format: 'json',
+    origin: '*'
+  });
+
+  try {
+    const contradictoryResponse = await fetch(`${endpoint}?${contradictoryParams}`);
+    if (contradictoryResponse.ok) {
+      const contradictoryData = await contradictoryResponse.json();
+      // Combine both result sets, removing duplicates by pageid
+      const allResults = [...data.query.search];
+      const existingPageIds = new Set(allResults.map((result: WikiSearchResult) => result.pageid));
+      
+      contradictoryData.query.search.forEach((result: WikiSearchResult) => {
+        if (!existingPageIds.has(result.pageid)) {
+          allResults.push(result);
+          existingPageIds.add(result.pageid);
+        }
+      });
+      
+      return allResults;
+    }
+  } catch (error) {
+    console.error("Error fetching contradictory data:", error);
+    // Continue with original results if contradictory search fails
+  }
+
   return data.query.search;
 }
 
@@ -140,13 +176,23 @@ async function getWikipediaExtract(pageId: number): Promise<{pageid: number; tit
 }
 
 /**
- * Basic analysis of a statement against Wikipedia articles
+ * Advanced analysis of a statement against Wikipedia articles
  */
 function analyzeStatement(statement: string, articles: Array<{title: string, extract: string}>) {
   const statementLower = statement.toLowerCase();
   let containsContradiction = false;
   let containsSupport = false;
   let contextualMatch = false;
+  
+  // Collect individual facts from articles
+  const facts: { text: string, isContradiction: boolean, source: string }[] = [];
+  
+  // Parse statement into key components
+  const statementWords = statementLower.split(' ');
+  const statementNegated = statementLower.includes(' not ') || 
+                           statementLower.includes("n't") || 
+                           statementLower.includes(' never ') ||
+                           statementLower.includes(' false ');
   
   // Look for key terms in the extracts
   const statementTerms = getSearchTerm(statement).split(' ');
@@ -159,26 +205,65 @@ function analyzeStatement(statement: string, articles: Array<{title: string, ext
     ? (matchingTermsCount / statementTerms.length) * 100
     : 0;
   
-  // Contextual analysis
+  // Contextual analysis with improved contradiction detection
   articles.forEach(article => {
     const extractLower = article.extract.toLowerCase();
+    const sentences = extractLower.split(/[.!?]+/).filter(s => s.trim().length > 0);
     
-    // Check for contradictions (simple approach)
+    // Check each sentence for relevance to our topic
+    sentences.forEach(sentence => {
+      const trimmedSentence = sentence.trim();
+      // Skip very short sentences
+      if (trimmedSentence.length < 10) return;
+      
+      // Check if sentence is relevant to our search terms
+      const isRelevant = statementTerms.some(term => 
+        trimmedSentence.includes(term.toLowerCase())
+      );
+      
+      if (isRelevant) {
+        // Check if this sentence contradicts or supports our statement
+        const sentenceNegated = trimmedSentence.includes(' not ') || 
+                                trimmedSentence.includes("n't") || 
+                                trimmedSentence.includes(' never ') ||
+                                trimmedSentence.includes(' false ');
+        
+        // Different negation status might indicate contradiction
+        const isPotentialContradiction = sentenceNegated !== statementNegated;
+        
+        facts.push({
+          text: trimmedSentence,
+          isContradiction: isPotentialContradiction,
+          source: article.title
+        });
+        
+        if (isPotentialContradiction) {
+          containsContradiction = true;
+        } else if (
+          trimmedSentence.includes(statementLower) || 
+          statementWords.every(word => trimmedSentence.includes(word))
+        ) {
+          containsSupport = true;
+        }
+      }
+    });
+    
+    // Additional specific contradiction patterns
     if (
-      (statementLower.includes('is') && extractLower.includes('is not')) ||
-      (statementLower.includes('are') && extractLower.includes('are not')) ||
-      (statementLower.includes('was') && extractLower.includes('was not')) ||
-      (statementLower.includes('were') && extractLower.includes('were not')) ||
-      (statementLower.includes('will') && extractLower.includes('will not')) ||
-      (statementLower.includes('has') && extractLower.includes('has not')) ||
-      (statementLower.includes('have') && extractLower.includes('have not')) ||
-      (statementLower.includes('can') && extractLower.includes('cannot'))
+      (statementLower.includes(' is ') && extractLower.includes(statementLower.replace(' is ', ' is not '))) ||
+      (statementLower.includes(' are ') && extractLower.includes(statementLower.replace(' are ', ' are not '))) ||
+      (statementLower.includes(' was ') && extractLower.includes(statementLower.replace(' was ', ' was not '))) ||
+      (statementLower.includes(' were ') && extractLower.includes(statementLower.replace(' were ', ' were not '))) ||
+      (statementLower.includes(' will ') && extractLower.includes(statementLower.replace(' will ', ' will not '))) ||
+      (statementLower.includes(' has ') && extractLower.includes(statementLower.replace(' has ', ' has not '))) ||
+      (statementLower.includes(' have ') && extractLower.includes(statementLower.replace(' have ', ' have not '))) ||
+      (statementLower.includes(' can ') && extractLower.includes(statementLower.replace(' can ', ' cannot ')))
     ) {
       containsContradiction = true;
     }
     
-    // Check for support (simple approach)
-    if (termMatchPercentage > 70) {
+    // Check for direct support
+    if (termMatchPercentage > 70 && extractLower.includes(statementLower)) {
       containsSupport = true;
     }
     
@@ -194,12 +279,16 @@ function analyzeStatement(statement: string, articles: Array<{title: string, ext
   let explanation = '';
   let detailedAnalysis = '';
   
+  // Adjust score based on evidence found
   if (containsContradiction && !containsSupport) {
     score = 2;
     explanation = "Information found in reliable sources contradicts this statement.";
   } else if (containsSupport && !containsContradiction) {
     score = 8;
     explanation = "Information found in reliable sources supports this statement.";
+  } else if (containsSupport && containsContradiction) {
+    score = 5;
+    explanation = "We found conflicting information - some sources support this statement while others contradict it.";
   } else if (contextualMatch) {
     score = 7;
     explanation = "This statement appears to be contextually accurate based on reliable sources.";
@@ -214,7 +303,9 @@ function analyzeStatement(statement: string, articles: Array<{title: string, ext
     explanation = "We found limited information related to this statement. Its accuracy cannot be determined.";
   }
   
-  // Generate detailed analysis
+  // Generate detailed analysis with facts
+  const relevantFacts = facts.slice(0, 10); // Limit to 10 most relevant facts
+  
   detailedAnalysis = `
 Statement analysis based on Wikipedia sources:
 
@@ -223,6 +314,11 @@ Number of sources examined: ${articles.length}
 ${containsSupport ? "✓ Found supporting information" : "✗ No strong supporting information found"}
 ${containsContradiction ? "✓ Found potentially contradicting information" : "✗ No direct contradictions found"}
 ${contextualMatch ? "✓ Found contextual match" : "✗ No direct contextual match"}
+
+Relevant facts found (${relevantFacts.length}):
+${relevantFacts.map((fact, i) => 
+  `${i+1}. ${fact.isContradiction ? "⚠️ " : ""}${fact.text.charAt(0).toUpperCase() + fact.text.slice(1)} (Source: ${fact.source})`
+).join('\n')}
 
 This analysis is based on current Wikipedia content, which is generally reliable but can change over time. For definitive fact-checking, consider consulting specialized fact-checking organizations.
   `.trim();

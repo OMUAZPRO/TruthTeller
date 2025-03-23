@@ -7,9 +7,9 @@ const Header = () => {
         <div className="flex justify-between items-center py-4 md:py-6">
           <div className="flex items-center">
             <Link href="/">
-              <a className="text-primary text-2xl font-bold">FactCheck</a>
+              <a className="text-primary text-2xl font-bold">TruthHunter</a>
             </Link>
-            <span className="ml-2 text-gray-500 font-light hidden sm:inline">Truth Verification Platform</span>
+            <span className="ml-2 text-gray-500 font-light hidden sm:inline">Fact Verification Platform</span>
           </div>
           <nav className="flex space-x-4">
             <Link href="/">
