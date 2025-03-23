@@ -98,6 +98,15 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
         <div className="mb-8 p-5 bg-white bg-opacity-80 rounded-lg border border-blue-100 shadow-sm">
           <h3 className="text-sm font-medium text-blue-600 mb-2">Verified News Headline:</h3>
           <p className="text-gray-800 font-medium text-lg">{result.statement}</p>
+          
+          {/* News source indicator if present */}
+          {result.statement.includes(':') && (
+            <div className="mt-2 bg-blue-50 px-3 py-1 rounded-md inline-block">
+              <span className="text-xs font-medium text-blue-700">
+                Source: {result.statement.split(':')[0].trim()}
+              </span>
+            </div>
+          )}
         </div>
         
         {/* Truth meter visualization - enhanced version */}
@@ -129,8 +138,40 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
         
         {/* Verification explanation */}
         <div className="mb-8">
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">Analysis Summary:</h3>
-          <p className="text-gray-700 leading-relaxed mb-4 bg-white bg-opacity-60 p-4 rounded-lg">{result.explanation}</p>
+          <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+            <span>News Analysis Summary</span>
+            <div className="ml-2 h-px w-16 bg-gradient-to-r from-blue-300 to-transparent"></div>
+          </h3>
+          
+          {/* Check for sensationalism */}
+          {result.explanation.includes("sensationalistic") && (
+            <div className="bg-amber-50 p-3 mb-4 rounded-lg border border-amber-200 flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-amber-500 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm text-amber-800">
+                This news headline contains potentially sensationalistic language, which may exaggerate or dramatize the facts.
+              </p>
+            </div>
+          )}
+          
+          {/* Main explanation */}
+          <div className="bg-white bg-opacity-60 p-4 rounded-lg shadow-sm mb-4">
+            <p className="text-gray-700 leading-relaxed">{result.explanation}</p>
+            
+            {/* Additional news context */}
+            <div className="mt-4 pt-3 border-t border-blue-100">
+              <h4 className="text-sm font-medium text-blue-700 mb-2">What This Means:</h4>
+              <p className="text-sm text-gray-600">
+                {result.truthScore > 7 ? 
+                  "This news headline appears to be accurate based on reliable sources. It can likely be trusted." :
+                  result.truthScore > 4 ?
+                  "This news headline contains some accurate elements but may be missing context or contains some inaccuracies." :
+                  "This news headline contains significant inaccuracies or makes claims that are not supported by reliable sources."
+                }
+              </p>
+            </div>
+          </div>
           
           {/* Expandable section for detailed analysis */}
           {result.detailedAnalysis && (
@@ -160,37 +201,73 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
         {/* Sources used */}
         <div>
           <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
-            <span>Source Information</span>
+            <span>Referenced Sources</span>
             <div className="ml-2 h-px flex-grow bg-gradient-to-r from-blue-300 to-transparent"></div>
           </h3>
           
           {result.sources.length > 0 ? (
-            <ul className="space-y-3">
-              {result.sources.map((source, index) => (
-                <li key={index} className="p-4 bg-white bg-opacity-70 rounded-lg border border-blue-50 shadow-sm transition-all duration-300 hover:shadow-md">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-800">{source.name}</span>
-                    {source.year && <span className="text-blue-500 text-sm font-medium bg-blue-50 px-2 py-1 rounded">{source.year}</span>}
-                  </div>
-                  <p className="text-gray-700 mt-2 text-sm leading-relaxed border-l-2 border-blue-100 pl-3 ml-1">{source.excerpt}</p>
-                  
-                  {source.url && (
-                    <a 
-                      href={source.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 text-sm flex items-center mt-3 transition-colors"
-                    >
-                      <span>View Original Source</span>
-                      <ExternalLinkIcon className="h-3 w-3 ml-1" />
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mb-4 p-3 bg-blue-50 bg-opacity-80 rounded-lg">
+                <p className="text-sm text-blue-700 flex items-start">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>
+                    The following sources were used to verify this news claim. Wikipedia content is generally reliable but can change over time. 
+                    For definitive news verification, consult multiple specialized fact-checking organizations.
+                  </span>
+                </p>
+              </div>
+              
+              <ul className="space-y-3">
+                {result.sources.map((source, index) => (
+                  <li key={index} className="p-4 bg-white bg-opacity-70 rounded-lg border border-blue-50 shadow-sm transition-all duration-300 hover:shadow-md">
+                    <div className="flex flex-wrap justify-between items-center gap-2">
+                      <span className="font-semibold text-gray-800">{source.name}</span>
+                      <div className="flex items-center space-x-2">
+                        {source.year && <span className="text-blue-500 text-sm font-medium bg-blue-50 px-2 py-1 rounded">{source.year}</span>}
+                        <span className="text-gray-500 text-xs px-2 py-1 bg-gray-100 rounded">Wikipedia</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-gray-700 mt-2 text-sm leading-relaxed border-l-2 border-blue-100 pl-3 ml-1">{source.excerpt}</p>
+                    
+                    <div className="mt-3 flex justify-between items-center">
+                      {source.url && (
+                        <a 
+                          href={source.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 text-sm flex items-center transition-colors"
+                        >
+                          <span>View Source Article</span>
+                          <ExternalLinkIcon className="h-3 w-3 ml-1" />
+                        </a>
+                      )}
+                      
+                      <span className="text-xs text-gray-500 italic">
+                        Reference #{index + 1}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              
+              <div className="mt-4 text-center">
+                <p className="text-xs text-gray-500 italic">
+                  Sources last updated: {formattedDate}
+                </p>
+              </div>
+            </>
           ) : (
             <div className="p-4 bg-blue-50 bg-opacity-50 rounded-lg text-center">
-              <p className="text-blue-600 text-sm italic">No additional sources were available for this verification.</p>
+              <div className="flex flex-col items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-blue-600 text-sm italic">No additional sources were available for this news verification.</p>
+                <p className="text-xs text-gray-500 mt-2">Try adding more specific details to get better results.</p>
+              </div>
             </div>
           )}
         </div>
