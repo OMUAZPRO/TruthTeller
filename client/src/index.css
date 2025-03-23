@@ -41,6 +41,21 @@
   animation: blob 7s infinite;
 }
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
 /* Soften card elements for a more relaxed feel */
 .card {
   @apply bg-white bg-opacity-90 backdrop-blur-sm transition-all duration-300;

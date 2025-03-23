@@ -67,59 +67,80 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
   };
 
   return (
-    <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <h2 className="text-xl font-semibold mb-4">Submit a Statement to Check</h2>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="text"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Enter a statement:</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="E.g., 'The Earth is flat.' or 'Drinking water helps prevent dehydration.'"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    rows={3}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="context"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-sm font-medium text-gray-700">Additional context (optional):</FormLabel>
-                <FormControl>
-                  <Textarea
-                    placeholder="Provide any additional context that might help with verification."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                    rows={2}
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "Verifying..." : "Verify Statement"}
-            </Button>
+    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+      
+      <div className="relative">
+        <div className="flex flex-col items-center sm:flex-row sm:justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent">
+            Fact Check Any Statement
+          </h2>
+          <div className="mt-2 sm:mt-0 flex items-center space-x-1">
+            <span className="inline-block h-1 w-1 rounded-full bg-blue-400 animate-pulse"></span>
+            <span className="text-sm text-blue-500 font-medium">100% Free</span>
           </div>
-        </form>
-      </Form>
+        </div>
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <FormField
+              control={form.control}
+              name="text"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-gray-700">What would you like to verify?</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="E.g., 'Coffee is the world's most popular beverage.' or 'Regular exercise improves mental health.'"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-80 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="context"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-sm font-medium text-gray-700">Additional context (optional):</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Add any context that might help with verification (e.g., time period, location, etc.)"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-80 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      rows={2}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-center pt-2">
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-2.5 px-8 rounded-lg shadow-md transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 
+                  <div className="flex items-center space-x-2">
+                    <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
+                    <span>Analyzing...</span>
+                  </div> : 
+                  "Verify Statement"
+                }
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </section>
   );
 };
