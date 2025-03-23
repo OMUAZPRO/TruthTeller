@@ -93,7 +93,7 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
                   <FormLabel className="text-sm font-medium text-gray-700">Enter a news headline or claim to verify:</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="E.g., 'Study finds social media usage linked to depression in teens' or 'New climate policy expected to reduce emissions by 30% by 2030'"
+                      placeholder="E.g., 'Reuters reports Facebook algorithm change decreased harmful content by 40%' or 'CNN: WHO announces new COVID variant with increased transmissibility'"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-80 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                       rows={3}
                       {...field}
