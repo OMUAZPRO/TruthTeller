@@ -112,7 +112,7 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
 /**
  * Get a detailed extract from a Wikipedia article
  */
-async function getWikipediaExtract(pageId: number) {
+async function getWikipediaExtract(pageId: number): Promise<{pageid: number; title: string; extract: string}> {
   const endpoint = 'https://en.wikipedia.org/w/api.php';
   const params = new URLSearchParams({
     action: 'query',
