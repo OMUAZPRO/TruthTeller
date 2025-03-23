@@ -4,7 +4,7 @@ const HeroSection = () => {
       <div className="relative">
         <div className="space-y-2 mb-6">
           <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent">
-            Discover the Truth
+            Verify News Instantly
           </h1>
           <div className="flex justify-center">
             <div className="h-1 w-20 bg-gradient-to-r from-blue-300 to-indigo-400 rounded-full"></div>
@@ -12,7 +12,7 @@ const HeroSection = () => {
         </div>
         
         <p className="text-gray-600 max-w-2xl mx-auto text-lg leading-relaxed">
-          Our 100% free fact-checking tool helps you determine the truth of any statement with clarity and confidence.
+          Our 100% free news verification tool helps you cut through misinformation and confirm the accuracy of news articles and headlines.
         </p>
         <p className="text-blue-500 max-w-xl mx-auto mt-3 font-medium">
           Powered by Wikipedia - completely free, no API key needed.

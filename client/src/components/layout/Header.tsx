@@ -9,7 +9,7 @@ const Header = () => {
             <Link href="/">
               <a className="text-primary text-2xl font-bold">TruthHunter</a>
             </Link>
-            <span className="ml-2 text-gray-500 font-light hidden sm:inline">Fact Verification Platform</span>
+            <span className="ml-2 text-gray-500 font-light hidden sm:inline">News Verification Platform</span>
           </div>
           <nav className="flex space-x-4">
             <Link href="/">

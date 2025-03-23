@@ -75,7 +75,7 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
       <div className="relative">
         <div className="flex flex-col items-center sm:flex-row sm:justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800 bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent">
-            Fact Check Any Statement
+            News Verification
           </h2>
           <div className="mt-2 sm:mt-0 flex items-center space-x-1">
             <span className="inline-block h-1 w-1 rounded-full bg-blue-400 animate-pulse"></span>
@@ -90,10 +90,10 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
               name="text"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">What would you like to verify?</FormLabel>
+                  <FormLabel className="text-sm font-medium text-gray-700">Enter a news headline or claim to verify:</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="E.g., 'Coffee is the world's most popular beverage.' or 'Regular exercise improves mental health.'"
+                      placeholder="E.g., 'Study finds social media usage linked to depression in teens' or 'New climate policy expected to reduce emissions by 30% by 2030'"
                       className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-80 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
                       rows={3}
                       {...field}
@@ -134,7 +134,7 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
                     <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
                     <span>Analyzing...</span>
                   </div> : 
-                  "Verify Statement"
+                  "Verify News"
                 }
               </Button>
             </div>

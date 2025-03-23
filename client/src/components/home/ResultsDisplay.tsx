@@ -25,8 +25,8 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
   const handleShareResults = () => {
     if (navigator.share) {
       navigator.share({
-        title: "FactCheck Result",
-        text: `"${result.statement}" is rated ${result.truthRating} by FactCheck.`,
+        title: "TruthHunter News Verification",
+        text: `"${result.statement}" is rated ${result.truthRating} by TruthHunter News Verification.`,
         url: window.location.href,
       }).catch((error) => {
         console.error("Error sharing:", error);
@@ -34,7 +34,7 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
     } else {
       // Fallback to clipboard copy
       navigator.clipboard.writeText(
-        `"${result.statement}" is rated ${result.truthRating} by FactCheck. Truth score: ${result.truthScore}/10. ${window.location.href}`
+        `"${result.statement}" is rated ${result.truthRating} by TruthHunter News Verification. Truth score: ${result.truthScore}/10. ${window.location.href}`
       ).then(() => {
         toast({
           title: "Copied to clipboard",
@@ -64,7 +64,7 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
         <div className="flex flex-col sm:flex-row justify-between items-start mb-8">
           <div className="flex items-center mb-4 sm:mb-0">
             <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent">
-              Verification Results
+              News Verification Results
             </h2>
             <div className="ml-2 flex items-center">
               <span className="inline-block h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></span>
@@ -96,7 +96,7 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
         
         {/* Statement being verified */}
         <div className="mb-8 p-5 bg-white bg-opacity-80 rounded-lg border border-blue-100 shadow-sm">
-          <h3 className="text-sm font-medium text-blue-600 mb-2">Verified Statement:</h3>
+          <h3 className="text-sm font-medium text-blue-600 mb-2">Verified News Headline:</h3>
           <p className="text-gray-800 font-medium text-lg">{result.statement}</p>
         </div>
         
