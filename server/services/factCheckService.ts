@@ -1,6 +1,9 @@
 import { SourceInfo, VerificationResponse } from "@shared/types";
 import { getTruthRating } from "@shared/types";
 
+// Get API key from environment variables
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
 // Interface for Google Fact Check API response
 interface GoogleFactCheckResponse {
   claims: Array<{
@@ -63,8 +66,13 @@ export async function factCheckStatement(statement: string, context?: string): P
     // Encode the query for URL
     const query = encodeURIComponent(statement);
     
-    // Call the Google Fact Check Tools API (free, no API key required)
-    const response = await fetch(`https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${query}&languageCode=en-US`, {
+    // Check if API key is available
+    if (!GOOGLE_API_KEY) {
+      throw new Error("Google API key is missing. Please set the GOOGLE_API_KEY environment variable.");
+    }
+
+    // Call the Google Fact Check Tools API with API key
+    const response = await fetch(`https://factchecktools.googleapis.com/v1alpha1/claims:search?query=${query}&languageCode=en-US&key=${GOOGLE_API_KEY}`, {
       method: "GET",
       headers: {
         "Accept": "application/json"
@@ -155,12 +163,24 @@ See the sources below for more detailed information about this fact check.
   } catch (error) {
     console.error("Error in fact checking statement:", error);
     
+    // Determine the appropriate error message
+    let errorMessage = "We encountered an error while fact-checking this statement. Please try again later.";
+    
+    // Check for specific API key related errors
+    if (error instanceof Error) {
+      if (error.message.includes("API key is missing")) {
+        errorMessage = "API key is missing. Please contact the administrator to set up a Google Fact Check Tools API key.";
+      } else if (error.message.includes("PERMISSION_DENIED") || error.message.includes("403")) {
+        errorMessage = "Authentication error with the fact-checking service. Please ensure your Google API key has access to the Fact Check Tools API.";
+      }
+    }
+    
     // Return a fallback response for error cases
     return {
       statement,
       truthScore: 5,
       truthRating: getTruthRating(5),
-      explanation: "We encountered an error while fact-checking this statement. Please try again later.",
+      explanation: errorMessage,
       sources: [],
       verifiedAt: new Date().toISOString()
     };

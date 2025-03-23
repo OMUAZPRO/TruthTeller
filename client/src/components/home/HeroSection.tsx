@@ -6,7 +6,7 @@ const HeroSection = () => {
         Our free fact-checking tool helps you determine the truth or falsehood of statements using verified information from trusted fact-checking organizations.
       </p>
       <p className="text-gray-500 max-w-xl mx-auto mt-2">
-        Powered by Google Fact Check Tools - no account or API key needed.
+        Powered by Google Fact Check Tools API - accurate and reliable.
       </p>
     </section>
   );

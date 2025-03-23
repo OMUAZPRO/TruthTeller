@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { statementVerificationSchema, type StatementVerificationRequest } from "@shared/schema";
-import { factCheckStatement } from "../services/factCheckService";
+import { factCheckStatement } from "../services/wikiFactCheckService";
 import { storage } from "../storage";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
