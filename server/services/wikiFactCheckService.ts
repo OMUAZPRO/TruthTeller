@@ -118,6 +118,25 @@ function preprocessStatement(statement: string): string {
     .replace(/\bspaceship(?:s)?\b/gi, 'spacecraft')  // More accurate technical term
     .replace(/\bStarlink\b/gi, 'Starlink satellites')  // Clarify what Starlink is
     
+    // Handle health-related statements - convert to proper phrasing
+    .replace(/\bcoffee reduce(?:s)? heart attack(?:s)?/gi, 'coffee consumption reduces risk of heart attacks')
+    .replace(/\bcoffee cause(?:s)? heart attack(?:s)?/gi, 'coffee consumption causes heart attacks')
+    .replace(/\bcoffee(?:s)? reduce(?:s)? cancer(?:s)?/gi, 'coffee consumption reduces risk of cancer')
+    .replace(/\bcoffee lead(?:s)? to (\w+)/gi, 'coffee consumption leads to $1')
+    .replace(/\bhelp(?:s)? with (\w+)/gi, 'helps reduce $1')
+    .replace(/\b(\w+) prevent(?:s)? cancer\b/gi, '$1 helps prevent cancer')
+    .replace(/\b(\w+) cure(?:s)? (\w+)\b/gi, '$1 is a cure for $2')
+    .replace(/\b(\w+) improve(?:s)? (\w+)\b/gi, '$1 improves $2 health')
+    
+    // Add verbs for short/incomplete health claims
+    .replace(/\b(coffee|tea|alcohol|smoking) (heart disease|cancer|diabetes)\b/gi, '$1 affects risk of $2')
+    .replace(/\b(coffee|tea|alcohol|smoking) (health|brain|heart)\b/gi, '$1 affects $2 health')
+    
+    // Convert short incomplete claims to proper statements
+    .replace(/\bcoffee heart\b/gi, 'coffee affects heart health')
+    .replace(/\bsmoking cancer\b/gi, 'smoking increases cancer risk')
+    .replace(/\beating vegetables\b/gi, 'eating vegetables improves health')
+    
     // Fix missing spaces and apostrophes
     .replace(/\b(\w+)didnt\b/gi, '$1 didn\'t')
     .replace(/\b(\w+)wont\b/gi, '$1 won\'t')
@@ -127,13 +146,25 @@ function preprocessStatement(statement: string): string {
     .replace(/\b(\w+)hasnt\b/gi, '$1 hasn\'t')
     .replace(/\b(\w+)havent\b/gi, '$1 haven\'t')
     
+    // Add missing verb forms in short truncated claims
+    .replace(/\b(\w+) (\w+)\b/gi, (match, first, second) => {
+      // Convert nouns followed by nouns into proper statements if they're known health terms
+      if (
+        ['coffee', 'tea', 'exercise', 'alcohol', 'smoking', 'sugar', 'vegetables', 'fruit'].includes(first.toLowerCase()) && 
+        ['heart', 'cancer', 'attack', 'diabetes', 'dementia', 'obesity', 'weight'].includes(second.toLowerCase())
+      ) {
+        return `${first} affects ${second}`;
+      }
+      return match; // No change
+    })
+    
     // Fix number formatting which is important in news claims
     .replace(/(\d),(\d)/g, '$1$2')  // Remove commas between numbers
     
     // Preserve capitalization for key organizations and names
     .replace(/\b([A-Z]{2,})\b/g, function(match) {
       // Preserve common acronyms but lowercase others
-      const commonAcronyms = ['NASA', 'FBI', 'CIA', 'UN', 'EU', 'UK', 'US', 'USA', 'SpaceX', 'NATO'];
+      const commonAcronyms = ['NASA', 'FBI', 'CIA', 'UN', 'EU', 'UK', 'US', 'USA', 'SpaceX', 'NATO', 'WHO', 'CDC'];
       return commonAcronyms.includes(match) ? match : match.charAt(0) + match.slice(1).toLowerCase();
     });
   
@@ -497,6 +528,32 @@ function generateSearchQueries(searchTerm: string): string[] {
   // Add fact-checking focused queries for better contradiction detection
   queries.push(`fact check ${searchTerm}`);
   
+  // Detect if this is a health-related claim
+  const isHealthClaim = searchTerm.toLowerCase().match(/\b(coffee|tea|wine|alcohol|smoking|exercise|diet|sugar|vegetable|fruit|vitamin|protein|fat|carb|heart|cancer|disease|health|pressure|cholesterol|diabetes|obesity|dementia|alzheimer|brain|weight)\b/) !== null;
+  
+  // Add special handling for health claims
+  if (isHealthClaim) {
+    // Add common health research terms
+    if (searchTerm.toLowerCase().includes('coffee')) {
+      queries.push('coffee health effects');
+      queries.push('caffeine cardiovascular');
+      queries.push('coffee consumption heart');
+      queries.push('coffee studies meta-analysis');
+    }
+    
+    if (searchTerm.toLowerCase().includes('heart') || searchTerm.toLowerCase().includes('attack')) {
+      queries.push('cardiovascular disease risk factors');
+      queries.push('heart attack prevention');
+      queries.push('coronary artery disease');
+    }
+    
+    // Add scientific study terminology for better results
+    queries.push('medical research');
+    queries.push('scientific studies');
+    queries.push('clinical trials');
+    queries.push('meta analysis'); 
+  }
+  
   // Handle specific terms to improve results
   let processedSearchTerm = searchTerm;
   if (searchTerm.toLowerCase().includes('spacex') && searchTerm.toLowerCase().includes('spaceship')) {
@@ -512,8 +569,18 @@ function generateSearchQueries(searchTerm: string): string[] {
   
   // Add alternative versions of possibly misunderstood terms
   const alternativeTerms: {[key: string]: string[]} = {
+    // Tech terms
     'spaceship': ['spacecraft', 'rocket', 'satellite'],
     'starlink': ['starlink satellites', 'spacex internet satellites'],
+    
+    // Health terms
+    'coffee': ['caffeine', 'coffee consumption', 'coffee drinking'],
+    'heart attack': ['myocardial infarction', 'cardiovascular disease', 'coronary event'],
+    'reduce': ['decrease', 'lower', 'prevent', 'protect against'],
+    'cause': ['increase risk', 'contribute to', 'associated with'],
+    'health': ['wellbeing', 'medical condition', 'physiology'],
+    
+    // News terms
     'government': ['administration', 'officials'],
     'says': ['claims', 'states', 'announces'],
     'war': ['conflict', 'military operation', 'invasion'],
@@ -758,18 +825,37 @@ function analyzeStatement(statement: string, articles: Array<{title: string, ext
     // Check if numbers/stats are mentioned, with special handling for common misinterpretations
     const numberMatches = numbers.filter(num => {
       const numLower = num.toLowerCase();
-      // For SpaceX statements, numbers often refer to satellites or rockets
-      if (isAboutSpaceX && numLower.match(/\b\d+\b/)) {
-        const numberValue = parseInt(numLower.match(/\b\d+\b/)[0]);
+      
+      // Special handling for SpaceX and numbers
+      if (isAboutSpaceX) {
+        // Safe extraction of number from string
+        const numberRegex = /\b(\d+)\b/;
+        const match = numLower.match(numberRegex);
         
-        // For Starlink statements, numbers in 40-60 range are likely referring to satellites per launch
-        if (isAboutStarlink && numberValue >= 40 && numberValue <= 60) {
-          // Check if article mentions similar numbers of satellites
-          const starLinkNumberMatches = extractLower.match(/\b([4-6][0-9])\b.*?(?:satellite|starlink)/);
-          return starLinkNumberMatches !== null;
+        if (match && match[1]) {
+          const numberValue = parseInt(match[1]);
+          
+          // For Starlink statements, handle satellite numbers specially
+          if (isAboutStarlink && numberValue >= 40 && numberValue <= 60) {
+            // Look for similar numbers in satellite context
+            return extractLower.includes("starlink") && 
+                  (extractLower.includes("satellite") || extractLower.includes("satellites"));
+          }
         }
       }
       
+      // For health claims, be more lenient with number matching (percentages, ranges, etc.)
+      if (statementLower.includes("coffee") || statementLower.includes("heart")) {
+        // Check if the article contains numbers in similar contexts
+        if (extractLower.includes("percent") || 
+            extractLower.includes("reduction") || 
+            extractLower.includes("increase") ||
+            extractLower.includes("decrease")) {
+          return true;
+        }
+      }
+      
+      // Default: exact match
       return extractLower.includes(numLower);
     });
     const hasNumberMatch = numberMatches.length > 0;
