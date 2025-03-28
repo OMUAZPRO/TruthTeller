@@ -35,9 +35,9 @@ export async function factCheckStatement(statement: string, context?: string): P
     
     console.log(`Found ${searchResults.length} potential sources for verification`);
     
-    // Get content extracts for the top articles (increased to 12 for better coverage)
+    // Get content extracts for the top articles (increased to 20 for better coverage)
     const articles = await Promise.all(
-      searchResults.slice(0, 12).map(result => getWikipediaExtract(result.pageid))
+      searchResults.slice(0, 20).map(result => getWikipediaExtract(result.pageid))
     );
     
     // Filter out articles with very short extracts that likely won't be helpful
@@ -139,7 +139,12 @@ function findRelevantExcerpt(extract: string, statement: string, searchTerm: str
   // Get keywords from both the statement and search term
   const statementKeywords = statement.toLowerCase().split(/\W+/).filter(word => word.length > 3);
   const searchKeywords = searchTerm.toLowerCase().split(/\W+/).filter(word => word.length > 3);
-  const allKeywords = [...new Set([...statementKeywords, ...searchKeywords])];
+  // Use object to deduplicate
+  const uniqueKeywordsObj: {[key: string]: boolean} = {};
+  [...statementKeywords, ...searchKeywords].forEach(word => {
+    uniqueKeywordsObj[word] = true;
+  });
+  const allKeywords = Object.keys(uniqueKeywordsObj);
   
   // Score each sentence based on keyword matches
   const scoredSentences = sentences.map(sentence => {
@@ -345,7 +350,7 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
     action: 'query',
     list: 'search',
     srsearch: searchTerm,
-    srlimit: '20', // Increased limit to get more results
+    srlimit: '30', // Increased limit to get more results
     sroffset: '0',
     format: 'json',
     origin: '*'
@@ -373,7 +378,7 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
           action: 'query',
           list: 'search',
           srsearch: query,
-          srlimit: '10',
+          srlimit: '15', // Increased for more results
           format: 'json',
           origin: '*'
         });
@@ -416,16 +421,37 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
 function generateSearchQueries(searchTerm: string): string[] {
   const queries: string[] = [];
   
-  // Add negation search to find contradictory information
+  // Add various negation searches to find contradictory information
   queries.push(`not ${searchTerm}`);
+  queries.push(`debunked ${searchTerm}`);
+  queries.push(`false claim ${searchTerm}`);
+  queries.push(`incorrect ${searchTerm}`);
 
   // Pull out likely entities and create focused queries
   const entities = searchTerm.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+  
+  // Extract additional keywords for better search coverage
+  const keywords = searchTerm.toLowerCase().split(' ')
+    .filter(word => word.length > 3)
+    .filter(word => !['and', 'that', 'this', 'with', 'from', 'will', 'have', 'has', 'had'].includes(word));
+  
+  // Include the top keywords for more targeted searches
+  if (keywords.length > 2) {
+    const topKeywords = keywords.slice(0, Math.min(5, keywords.length));
+    queries.push(topKeywords.join(' '));
+  }
+  
   if (entities.length > 0) {
-    // Create combinations of the most important entities (up to 3)
-    const topEntities = entities.slice(0, 3);
+    // Create combinations of the most important entities (up to 4 for better coverage)
+    const topEntities = entities.slice(0, 4);
     topEntities.forEach(entity => {
       queries.push(entity);
+      
+      // Add contextual searches for each entity
+      if (keywords.length > 0) {
+        const contextKeyword = keywords[0];
+        queries.push(`${entity} ${contextKeyword}`);
+      }
     });
     
     // If we have multiple entities, combine them in pairs
@@ -487,18 +513,18 @@ function generateSearchQueries(searchTerm: string): string[] {
     });
   }
   
-  // Filter out duplicates and very short queries
-  const uniqueQueries = new Set<string>();
+  // Filter out duplicates and very short queries using an object
+  const uniqueQueriesObj: {[key: string]: boolean} = {};
   queries.forEach(query => {
     // Normalize and clean up the query
     const normalizedQuery = query.trim().toLowerCase();
     if (normalizedQuery.length > 3 && normalizedQuery !== searchTerm.toLowerCase()) {
-      uniqueQueries.add(normalizedQuery);
+      uniqueQueriesObj[normalizedQuery] = true;
     }
   });
   
   // Return unique queries, limited to prevent too many API calls
-  return Array.from(uniqueQueries).slice(0, 5);
+  return Object.keys(uniqueQueriesObj).slice(0, 8); // Increased from 5 to 8 for better coverage
 }
 
 /**
