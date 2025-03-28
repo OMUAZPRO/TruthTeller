@@ -105,7 +105,7 @@ const ResultsDisplay = ({ result }: ResultsDisplayProps) => {
   };
 
   return (
-    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden animate-fadeIn">
+    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden animate-fadeIn w-full">
       {/* Decorative background elements */}
       <div className="absolute -top-24 -left-24 w-64 h-64 bg-green-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
       <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>

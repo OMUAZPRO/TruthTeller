@@ -105,12 +105,12 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
   const placeholderText = `E.g., "${EXAMPLE_HEADLINES[currentPlaceholder]}"`;
 
   return (
-    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden animate-breath">
+    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden animate-breath w-full">
       {/* Decorative background elements */}
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
       
-      <div className="relative">
+      <div className="relative w-full">
         <div className="flex flex-col items-center sm:flex-row sm:justify-between mb-6">
           <h2 className="text-2xl font-bold fun-text animate-gentle-pulse">
             News Verification

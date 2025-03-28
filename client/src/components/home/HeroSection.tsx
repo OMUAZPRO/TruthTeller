@@ -2,11 +2,11 @@ import { FloatingElements } from "@/components/ui/floating-elements";
 
 const HeroSection = () => {
   return (
-    <section className="text-center mb-12 py-12 relative overflow-hidden">
+    <section className="text-center mb-12 py-12 relative overflow-hidden w-full">
       {/* Background decorative elements */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
         <FloatingElements 
-          density="medium" 
+          density="low"  // Reduced density to improve performance
           speed="slow" 
           type="shapes" 
           color="mixed" 
@@ -15,7 +15,7 @@ const HeroSection = () => {
       </div>
 
       {/* Main hero content */}
-      <div className="relative z-10">
+      <div className="relative z-10 w-full">
         <div className="space-y-2 mb-8 animate-fadeIn">
           <h1 className="text-4xl md:text-6xl font-bold mb-4 fun-text animate-gentle-pulse">
             TruthHunter

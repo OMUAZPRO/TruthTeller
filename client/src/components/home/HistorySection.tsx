@@ -150,12 +150,12 @@ const HistorySection = ({ onSelectResult }: HistorySectionProps) => {
   const hasMore = visibleCount < filteredResults.length;
 
   return (
-    <section className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-md p-6 animate-fadeIn relative overflow-hidden">
+    <section className="bg-white bg-opacity-90 backdrop-blur-sm rounded-xl shadow-md p-6 animate-fadeIn relative overflow-hidden w-full">
       {/* Decorative bubbles */}
       <div className="absolute -bottom-16 -right-16 w-32 h-32 bg-blue-50 rounded-full mix-blend-multiply filter blur-xl opacity-50 animate-blob animation-delay-4000"></div>
       <div className="absolute -top-16 -left-16 w-32 h-32 bg-indigo-50 rounded-full mix-blend-multiply filter blur-xl opacity-50 animate-blob"></div>
       
-      <div className="relative">
+      <div className="relative w-full">
         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
           <h2 className="text-xl font-bold fun-text flex items-center animate-fadeIn">
             <HistoryIcon className="h-5 w-5 mr-2 text-blue-500" />
