@@ -89,6 +89,7 @@ export async function factCheckStatement(statement: string, context?: string): P
 
 /**
  * Preprocess a statement to fix common typos, normalize spacing, and improve recognition
+ * Enhanced with additional understanding of domain-specific terms and abbreviations
  */
 function preprocessStatement(statement: string): string {
   // Fix common typos and spelling mistakes in news statements
@@ -98,13 +99,70 @@ function preprocessStatement(statement: string): string {
     .replace(/\b(\w+)teh(\b)/gi, '$1the$2')   // Fix "teh" typo
     .replace(/\bthier\b/gi, 'their')          // Fix "thier" typo
     .replace(/\brecieved\b/gi, 'received')    // Fix "recieved" typo
-    .replace(/\bgovt\b/gi, 'government')      // Expand common abbreviations
+    
+    // Expand common news abbreviations
+    .replace(/\bgovt\b/gi, 'government')
     .replace(/\bpres\b/gi, 'president')
-    .replace(/\b(\w+)didnt\b/gi, '$1 didn\'t')  // Fix missing spaces and apostrophes
+    .replace(/\bCEO\b/g, 'Chief Executive Officer')
+    .replace(/\bNASA\b/g, 'NASA')  // Keep NASA as is, it's well recognized
+    .replace(/\bFBI\b/g, 'FBI')    // Keep FBI as is
+    .replace(/\bCIA\b/g, 'CIA')    // Keep CIA as is
+    .replace(/\bUN\b/g, 'United Nations')
+    .replace(/\bEU\b/g, 'European Union')
+    .replace(/\bUK\b/g, 'United Kingdom')
+    .replace(/\bUS\b/g, 'United States')
+    .replace(/\bUSA\b/g, 'United States')
+    
+    // Fix common tech company terms that might cause confusion
+    .replace(/\bsatellites\b/gi, 'satellites')  // Keep satellites as is rather than treating as spaceships
+    .replace(/\bspaceship(?:s)?\b/gi, 'spacecraft')  // More accurate technical term
+    .replace(/\bStarlink\b/gi, 'Starlink satellites')  // Clarify what Starlink is
+    
+    // Fix missing spaces and apostrophes
+    .replace(/\b(\w+)didnt\b/gi, '$1 didn\'t')
     .replace(/\b(\w+)wont\b/gi, '$1 won\'t')
     .replace(/\b(\w+)cant\b/gi, '$1 can\'t')
-    // Fix mixed case issues that might be common in news headlines
-    .replace(/\b([A-Z]{2,})\b/g, (match) => match.charAt(0) + match.slice(1).toLowerCase()); // Convert "NATO" to "Nato" etc.
+    .replace(/\b(\w+)isnt\b/gi, '$1 isn\'t')
+    .replace(/\b(\w+)arent\b/gi, '$1 aren\'t')
+    .replace(/\b(\w+)hasnt\b/gi, '$1 hasn\'t')
+    .replace(/\b(\w+)havent\b/gi, '$1 haven\'t')
+    
+    // Fix number formatting which is important in news claims
+    .replace(/(\d),(\d)/g, '$1$2')  // Remove commas between numbers
+    
+    // Preserve capitalization for key organizations and names
+    .replace(/\b([A-Z]{2,})\b/g, function(match) {
+      // Preserve common acronyms but lowercase others
+      const commonAcronyms = ['NASA', 'FBI', 'CIA', 'UN', 'EU', 'UK', 'US', 'USA', 'SpaceX', 'NATO'];
+      return commonAcronyms.includes(match) ? match : match.charAt(0) + match.slice(1).toLowerCase();
+    });
+  
+  // Handle domain-specific terms
+  const domainTerms = {
+    'spacex': 'SpaceX',
+    'starlink': 'Starlink',
+    'tesla': 'Tesla',
+    'google': 'Google',
+    'microsoft': 'Microsoft',
+    'amazon': 'Amazon',
+    'apple': 'Apple',
+    'facebook': 'Facebook',
+    'meta': 'Meta',
+    'twitter': 'Twitter',
+    'x': 'X (formerly Twitter)',
+    'ukraine': 'Ukraine',
+    'russia': 'Russia',
+    'china': 'China',
+    'gaza': 'Gaza',
+    'israel': 'Israel',
+    'palestine': 'Palestine'
+  };
+  
+  // Replace domain terms with proper capitalization and formatting
+  Object.entries(domainTerms).forEach(([term, replacement]) => {
+    const regex = new RegExp(`\\b${term}\\b`, 'gi');
+    processed = processed.replace(regex, replacement);
+  });
   
   // Normalize whitespace
   processed = processed
@@ -199,6 +257,7 @@ function findRelevantExcerpt(extract: string, statement: string, searchTerm: str
  */
 function getSearchTerm(statement: string): string {
   // Pre-process the statement to fix common typos and misspellings
+  // We'll do basic preprocessing here even though the preprocessStatement does more
   let processedStatement = statement
     .replace(/\b(\w+)wih(\b)/gi, '$1with$2')  // Fix common "wih" typo
     .replace(/\b(\w+)teh(\b)/gi, '$1the$2')   // Fix common "teh" typo
@@ -206,7 +265,15 @@ function getSearchTerm(statement: string): string {
     .replace(/\bdidnt\b/gi, "didn't")         // Fix missing apostrophes
     .replace(/\bwont\b/gi, "won't")
     .replace(/\bcant\b/gi, "can't")
-    .replace(/\bhasnt\b/gi, "hasn't");
+    .replace(/\bhasnt\b/gi, "hasn't")
+    
+    // Tech-specific terms that help with understanding
+    .replace(/\bspaceship(?:s)?\b/gi, 'spacecraft') // More accurate technical term
+    .replace(/\bStarlink\b/gi, 'Starlink satellites') // Clarify what Starlink is
+    
+    // Normalize companies and organizations
+    .replace(/\bspacex\b/gi, 'SpaceX')
+    .replace(/\bnasa\b/gi, 'NASA');
 
   // Find entities (names, organizations, locations) which are often capitalized in news headlines
   // Extended to capture multi-word entities with more complex patterns
@@ -426,6 +493,50 @@ function generateSearchQueries(searchTerm: string): string[] {
   queries.push(`debunked ${searchTerm}`);
   queries.push(`false claim ${searchTerm}`);
   queries.push(`incorrect ${searchTerm}`);
+  
+  // Add fact-checking focused queries for better contradiction detection
+  queries.push(`fact check ${searchTerm}`);
+  
+  // Handle specific terms to improve results
+  let processedSearchTerm = searchTerm;
+  if (searchTerm.toLowerCase().includes('spacex') && searchTerm.toLowerCase().includes('spaceship')) {
+    processedSearchTerm = searchTerm.replace(/spaceship/gi, 'spacecraft');
+    queries.push(`spacex ${processedSearchTerm}`);
+    queries.push(`spacex rocket launch`);
+    queries.push(`spacex satellite deployment`);
+  }
+  
+  if (searchTerm.toLowerCase().includes('starlink')) {
+    queries.push(`spacex starlink satellites`);
+  }
+  
+  // Add alternative versions of possibly misunderstood terms
+  const alternativeTerms: {[key: string]: string[]} = {
+    'spaceship': ['spacecraft', 'rocket', 'satellite'],
+    'starlink': ['starlink satellites', 'spacex internet satellites'],
+    'government': ['administration', 'officials'],
+    'says': ['claims', 'states', 'announces'],
+    'war': ['conflict', 'military operation', 'invasion'],
+    'peace': ['ceasefire', 'agreement', 'diplomatic solution'],
+    'company': ['corporation', 'firm', 'business'],
+    'discovered': ['found', 'identified', 'detected'],
+    'launched': ['deployed', 'started', 'began', 'initiated']
+  };
+  
+  // Check if any of these terms are in the search term and add alternatives
+  Object.entries(alternativeTerms).forEach(([term, alternatives]) => {
+    if (searchTerm.toLowerCase().includes(term)) {
+      alternatives.forEach(alt => {
+        const newQuery = searchTerm.toLowerCase().replace(
+          new RegExp(`\\b${term}\\b`, 'i'), 
+          alt
+        );
+        if (newQuery !== searchTerm.toLowerCase()) {
+          queries.push(newQuery);
+        }
+      });
+    }
+  });
 
   // Pull out likely entities and create focused queries
   const entities = searchTerm.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
@@ -433,7 +544,7 @@ function generateSearchQueries(searchTerm: string): string[] {
   // Extract additional keywords for better search coverage
   const keywords = searchTerm.toLowerCase().split(' ')
     .filter(word => word.length > 3)
-    .filter(word => !['and', 'that', 'this', 'with', 'from', 'will', 'have', 'has', 'had'].includes(word));
+    .filter(word => !['and', 'that', 'this', 'with', 'from', 'will', 'have', 'has', 'had', 'says', 'said', 'claimed', 'reported'].includes(word));
   
   // Include the top keywords for more targeted searches
   if (keywords.length > 2) {
@@ -610,12 +721,57 @@ function analyzeStatement(statement: string, articles: Array<{title: string, ext
     const extractLower = article.extract.toLowerCase();
     const sentences = extractLower.split(/[.!?]+/).filter(s => s.trim().length > 0);
     
+    // Special handling for specific types of statements
+    const isAboutSpaceX = statement.toLowerCase().includes('spacex');
+    const isAboutLaunch = statement.toLowerCase().includes('launch') || 
+                         statement.toLowerCase().includes('send') ||
+                         statement.toLowerCase().includes('deploy');
+    const isAboutStarlink = statement.toLowerCase().includes('starlink');
+    
+    // Process context adaptively based on statement content
+    if (isAboutSpaceX && isAboutLaunch) {
+      // For SpaceX launch statements, be more specific in what we consider a match
+      // Check for SpaceX spacecraft/satellite/rocket terms
+      const rocketTerms = ['falcon', 'spacecraft', 'satellite', 'rocket', 'starship', 'dragon'];
+      const hasRocketTerms = rocketTerms.some(term => extractLower.includes(term));
+      
+      // If article has SpaceX and rocket-related terms, boost its relevance
+      if (extractLower.includes('spacex') && hasRocketTerms) {
+        facts.push({
+          text: `SpaceX spacecraft/launch terminology found in the article.`,
+          isContradiction: false,
+          source: article.title
+        });
+      }
+    }
+    
     // Check if named entities are mentioned in this article
-    const entityMatches = entitiesLower.filter(entity => extractLower.includes(entity));
+    const entityMatches = entitiesLower.filter(entity => {
+      // For entities like "SpaceX", also check for alternative forms
+      if (entity === 'spacex') {
+        return extractLower.includes('spacex') || extractLower.includes('space x') || extractLower.includes('space exploration technologies');
+      }
+      return extractLower.includes(entity);
+    });
     const hasEntityMatch = entityMatches.length > 0;
     
-    // Check if numbers/stats are mentioned
-    const numberMatches = numbers.filter(num => extractLower.includes(num.toLowerCase()));
+    // Check if numbers/stats are mentioned, with special handling for common misinterpretations
+    const numberMatches = numbers.filter(num => {
+      const numLower = num.toLowerCase();
+      // For SpaceX statements, numbers often refer to satellites or rockets
+      if (isAboutSpaceX && numLower.match(/\b\d+\b/)) {
+        const numberValue = parseInt(numLower.match(/\b\d+\b/)[0]);
+        
+        // For Starlink statements, numbers in 40-60 range are likely referring to satellites per launch
+        if (isAboutStarlink && numberValue >= 40 && numberValue <= 60) {
+          // Check if article mentions similar numbers of satellites
+          const starLinkNumberMatches = extractLower.match(/\b([4-6][0-9])\b.*?(?:satellite|starlink)/);
+          return starLinkNumberMatches !== null;
+        }
+      }
+      
+      return extractLower.includes(numLower);
+    });
     const hasNumberMatch = numberMatches.length > 0;
     
     // Check each sentence for relevance to our topic
