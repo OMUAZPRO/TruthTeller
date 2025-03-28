@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Textarea } from "@/components/ui/textarea";
 import { queryClient } from "@/lib/queryClient";
 import { VerificationResponse } from "@shared/types";
+import { FunLoader } from "@/components/ui/fun-loader";
 
 // Form schema with validation
 const formSchema = z.object({
@@ -25,9 +26,36 @@ interface StatementFormProps {
   onVerificationComplete: (data: VerificationResponse & { id: number }) => void;
 }
 
+// Example news headlines for placeholder suggestions
+const EXAMPLE_HEADLINES = [
+  "NASA discovers evidence of water on Mars",
+  "New study shows coffee may reduce risk of heart disease",
+  "SpaceX launches 60 new satellites into orbit",
+  "WHO announces new guidelines for pandemic response",
+  "Scientists develop new renewable energy breakthrough"
+];
+
 const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentPlaceholder, setCurrentPlaceholder] = useState(0);
+  const [showTip, setShowTip] = useState(false);
+
+  // Rotate through example headlines for the placeholder text
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPlaceholder((prev) => (prev + 1) % EXAMPLE_HEADLINES.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Show a tip after form interaction
+  useEffect(() => {
+    const tipTimer = setTimeout(() => {
+      setShowTip(true);
+    }, 3000);
+    return () => clearTimeout(tipTimer);
+  }, []);
 
   // Initialize form
   const form = useForm<FormValues>({
@@ -48,10 +76,16 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
       queryClient.invalidateQueries({ queryKey: ["/api/statements"] });
       onVerificationComplete(data);
       form.reset();
+      // Show success toast with a fun message
+      toast({
+        title: "Analysis Complete! 🔍",
+        description: "We've analyzed your statement using our trusty Wikipedia data.",
+        variant: "default",
+      });
     },
     onError: (error) => {
       toast({
-        title: "Error",
+        title: "Oops! Something went wrong",
         description: error instanceof Error ? error.message : "Failed to verify statement. Please try again.",
         variant: "destructive",
       });
@@ -63,23 +97,28 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
 
   const onSubmit = (values: FormValues) => {
     setIsSubmitting(true);
+    setShowTip(false);
     mutation.mutate(values);
   };
 
+  // Custom placeholders with rotating examples
+  const placeholderText = `E.g., "${EXAMPLE_HEADLINES[currentPlaceholder]}"`;
+
   return (
-    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden">
+    <section className="relative card rounded-xl p-8 mb-8 overflow-hidden animate-breath">
       {/* Decorative background elements */}
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-100 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
       
       <div className="relative">
         <div className="flex flex-col items-center sm:flex-row sm:justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold fun-text animate-gentle-pulse">
             News Verification
           </h2>
-          <div className="mt-2 sm:mt-0 flex items-center space-x-1">
-            <span className="inline-block h-1 w-1 rounded-full bg-blue-400 animate-pulse"></span>
-            <span className="text-sm text-blue-500 font-medium">100% Free</span>
+          <div className="mt-2 sm:mt-0 flex items-center">
+            <span className="fun-badge animate-float">
+              100% Free Verification
+            </span>
           </div>
         </div>
         
@@ -90,16 +129,24 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
               name="text"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Enter a news headline or claim to verify:</FormLabel>
+                  <FormLabel className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <span>Enter a news headline or claim to verify:</span>
+                    <span className="text-blue-500 animate-pulse">✓</span>
+                  </FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="E.g., 'Reuters reports Facebook algorithm change decreased harmful content by 40%' or 'CNN: WHO announces new COVID variant with increased transmissibility'"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-80 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      placeholder={placeholderText}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-90 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 hover:shadow-md"
                       rows={3}
                       {...field}
                     />
                   </FormControl>
                   <FormMessage />
+                  {showTip && !field.value && (
+                    <p className="text-xs text-blue-500 mt-1 animate-fadeIn">
+                      💡 Tip: Try entering a specific news headline or claim for the best results!
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
@@ -109,11 +156,14 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
               name="context"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-gray-700">Additional context (optional):</FormLabel>
+                  <FormLabel className="text-sm font-semibold text-gray-700 flex items-center">
+                    <span>Additional context (optional):</span>
+                    <span className="ml-1 text-xs text-blue-400">(helps improve accuracy)</span>
+                  </FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add any context that might help with verification (e.g., time period, location, etc.)"
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-80 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                      placeholder="Add any context that might help with verification (e.g., time period, location, sources)"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-white bg-opacity-90 shadow-sm transition-all focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 hover:shadow-md"
                       rows={2}
                       {...field}
                     />
@@ -123,20 +173,44 @@ const StatementForm = ({ onVerificationComplete }: StatementFormProps) => {
               )}
             />
 
-            <div className="flex justify-center pt-2">
+            <div className="flex flex-col items-center pt-4">
               <Button
                 type="submit"
-                className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-2.5 px-8 rounded-lg shadow-md transition-all duration-300 transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+                className="fun-button group relative px-10 py-3"
                 disabled={isSubmitting}
               >
-                {isSubmitting ? 
-                  <div className="flex items-center space-x-2">
-                    <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
-                    <span>Analyzing...</span>
-                  </div> : 
-                  "Verify News"
-                }
+                {isSubmitting ? (
+                  <div className="flex items-center space-x-3">
+                    <FunLoader 
+                      type="bounce" 
+                      size="small" 
+                      text="" 
+                      colorClass="text-white" 
+                    />
+                    <span>Analyzing News...</span>
+                  </div>
+                ) : (
+                  <>
+                    <span className="relative z-10">Verify News</span>
+                    <span className="absolute inset-0 translate-y-1.5 translate-x-1.5 bg-blue-600 rounded-md opacity-30 transition-transform group-hover:translate-y-0 group-hover:translate-x-0"></span>
+                  </>
+                )}
               </Button>
+              
+              {!isSubmitting && (
+                <div className="mt-3 text-xs text-gray-500 animate-fadeIn opacity-80">
+                  Powered by Wikipedia - 100% free, no API key needed
+                </div>
+              )}
+              
+              {isSubmitting && (
+                <div className="mt-4 text-sm text-blue-500 animate-fadeIn opacity-90 max-w-md text-center">
+                  <p>We're analyzing this news claim using multiple sources...</p>
+                  <div className="w-full bg-blue-100 h-1.5 rounded-full mt-2 overflow-hidden">
+                    <div className="animate-shimmer bg-blue-500 h-full"></div>
+                  </div>
+                </div>
+              )}
             </div>
           </form>
         </Form>

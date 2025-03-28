@@ -13,6 +13,26 @@
 }
 
 @layer utilities {
+  .animation-delay-100 {
+    animation-delay: 0.1s;
+  }
+  
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+  }
+  
+  .animation-delay-300 {
+    animation-delay: 0.3s;
+  }
+  
+  .animation-delay-400 {
+    animation-delay: 0.4s;
+  }
+  
+  .animation-delay-500 {
+    animation-delay: 0.5s;
+  }
+  
   .animation-delay-2000 {
     animation-delay: 2s;
   }
@@ -22,6 +42,7 @@
   }
 }
 
+/* Background blob animation */
 @keyframes blob {
   0% {
     transform: translate(0px, 0px) scale(1);
@@ -41,6 +62,7 @@
   animation: blob 7s infinite;
 }
 
+/* Fade in animation for content */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -56,6 +78,69 @@
   animation: fadeIn 0.5s ease-out;
 }
 
+/* Pulse animation */
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 3s ease-in-out infinite;
+}
+
+/* Subtle floating animation */
+@keyframes float-subtle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.animate-float {
+  animation: float-subtle 3s ease-in-out infinite;
+}
+
+/* Soft breath animation for cards and containers */
+@keyframes soft-breath {
+  0%, 100% {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  }
+  50% {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.1);
+  }
+}
+
+.animate-breath {
+  animation: soft-breath 5s ease-in-out infinite;
+}
+
+/* Fun shimmer effect for buttons and highlights */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0) 0%, 
+    rgba(255,255,255,0.8) 50%, 
+    rgba(255,255,255,0) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite;
+}
+
 /* Soften card elements for a more relaxed feel */
 .card {
   @apply bg-white bg-opacity-90 backdrop-blur-sm transition-all duration-300;
@@ -63,6 +148,52 @@
 }
 
 .card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.1);
   transform: translateY(-2px);
+}
+
+/* Fun interactive elements */
+.fun-button {
+  @apply relative overflow-hidden transition-all bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium px-4 py-2 rounded-md;
+  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+}
+
+.fun-button::after {
+  content: '';
+  @apply absolute inset-0 bg-white opacity-0 transition-opacity;
+}
+
+.fun-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+.fun-button:hover::after {
+  opacity: 0.1;
+}
+
+.fun-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.2);
+}
+
+/* Highlight text with gradient */
+.fun-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-indigo-600;
+}
+
+/* Gentle pulsing badge */
+.fun-badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+         bg-blue-100 text-blue-800 relative overflow-hidden;
+}
+
+.fun-badge::after {
+  content: '';
+  @apply absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0;
+  animation: shimmer 2s infinite;
+}
+
+.fun-badge:hover::after {
+  opacity: 0.5;
 }
