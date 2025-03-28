@@ -3,45 +3,68 @@ import { getTruthRating } from "@shared/types";
 
 /**
  * Fact check a statement using Wikipedia content as a source
+ * Enhanced to better handle news claims with improved preprocessing and analysis
  * This is a completely free approach that doesn't require API keys
  */
 export async function factCheckStatement(statement: string, context?: string): Promise<VerificationResponse> {
   try {
-    // Extract key terms from the statement
-    const searchTerm = getSearchTerm(statement);
+    // Preprocess statement to handle common typos and formatting issues
+    let processedStatement = preprocessStatement(statement);
     
-    // Search Wikipedia for relevant articles
+    // Log the original and processed statement for debugging
+    console.log("Original statement:", statement);
+    console.log("Processed statement:", processedStatement);
+    
+    // Extract key terms from the statement with our enhanced algorithm
+    const searchTerm = getSearchTerm(processedStatement);
+    console.log("Generated search term:", searchTerm);
+    
+    // Search Wikipedia with our multi-query strategy for better coverage
     const searchResults = await searchWikipedia(searchTerm);
     
     if (!searchResults.length) {
       return {
-        statement,
+        statement: processedStatement, // Use the corrected statement
         truthScore: 5,
         truthRating: getTruthRating(5),
-        explanation: "No relevant information found to verify this statement. We cannot determine its accuracy.",
+        explanation: "We couldn't find reliable information to verify this news claim. Consider adding more specific details or checking specialized news sources.",
         sources: [],
         verifiedAt: new Date().toISOString()
       };
     }
     
-    // Get content extracts for the top articles (increased to 10)
+    console.log(`Found ${searchResults.length} potential sources for verification`);
+    
+    // Get content extracts for the top articles (increased to 12 for better coverage)
     const articles = await Promise.all(
-      searchResults.slice(0, 10).map(result => getWikipediaExtract(result.pageid))
+      searchResults.slice(0, 12).map(result => getWikipediaExtract(result.pageid))
     );
     
-    // Create sources from the articles
-    const sources: SourceInfo[] = articles.map(article => ({
-      name: article.title,
-      year: new Date().getFullYear().toString(), // Wikipedia is constantly updated
-      excerpt: article.extract.substring(0, 200) + "...",
-      url: `https://en.wikipedia.org/wiki/${encodeURIComponent(article.title.replace(/ /g, '_'))}`
-    }));
+    // Filter out articles with very short extracts that likely won't be helpful
+    const filteredArticles = articles.filter(article => article.extract.length > 50);
     
-    // Analyze the statement against the articles
-    const analysis = analyzeStatement(statement, articles);
+    // Create sources from the articles with improved excerpts that highlight relevant parts
+    const sources: SourceInfo[] = filteredArticles.map(article => {
+      // Try to find the most relevant section of the extract
+      const excerpt = findRelevantExcerpt(article.extract, processedStatement, searchTerm);
+      
+      return {
+        name: article.title,
+        // Use current year since Wikipedia articles are constantly updated
+        year: new Date().getFullYear().toString(),
+        excerpt: excerpt,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(article.title.replace(/ /g, '_'))}`
+      };
+    });
+    
+    // Analyze the statement against the articles with our improved analysis
+    const analysis = analyzeStatement(processedStatement, filteredArticles);
+    
+    // Log analysis results for debugging
+    console.log(`Analysis complete: Truth score ${analysis.score}/10, ${analysis.explanation}`);
     
     return {
-      statement,
+      statement: processedStatement, // Use the corrected statement
       truthScore: analysis.score,
       truthRating: getTruthRating(analysis.score),
       explanation: analysis.explanation,
@@ -52,12 +75,12 @@ export async function factCheckStatement(statement: string, context?: string): P
   } catch (error) {
     console.error("Error in fact checking statement:", error);
     
-    // Return a fallback response for error cases
+    // Return a more helpful error response
     return {
       statement,
       truthScore: 5,
       truthRating: getTruthRating(5),
-      explanation: "We encountered an error while fact-checking this statement. Please try again later.",
+      explanation: "We encountered an issue while verifying this news claim. This might be due to network issues or the complexity of the statement. Try rephrasing or providing more context.",
       sources: [],
       verifiedAt: new Date().toISOString()
     };
@@ -65,41 +88,239 @@ export async function factCheckStatement(statement: string, context?: string): P
 }
 
 /**
+ * Preprocess a statement to fix common typos, normalize spacing, and improve recognition
+ */
+function preprocessStatement(statement: string): string {
+  // Fix common typos and spelling mistakes in news statements
+  let processed = statement
+    // Fix common typos
+    .replace(/\b(\w+)wih(\b)/gi, '$1with$2')  // Fix "wih" typo
+    .replace(/\b(\w+)teh(\b)/gi, '$1the$2')   // Fix "teh" typo
+    .replace(/\bthier\b/gi, 'their')          // Fix "thier" typo
+    .replace(/\brecieved\b/gi, 'received')    // Fix "recieved" typo
+    .replace(/\bgovt\b/gi, 'government')      // Expand common abbreviations
+    .replace(/\bpres\b/gi, 'president')
+    .replace(/\b(\w+)didnt\b/gi, '$1 didn\'t')  // Fix missing spaces and apostrophes
+    .replace(/\b(\w+)wont\b/gi, '$1 won\'t')
+    .replace(/\b(\w+)cant\b/gi, '$1 can\'t')
+    // Fix mixed case issues that might be common in news headlines
+    .replace(/\b([A-Z]{2,})\b/g, (match) => match.charAt(0) + match.slice(1).toLowerCase()); // Convert "NATO" to "Nato" etc.
+  
+  // Normalize whitespace
+  processed = processed
+    .replace(/\s+/g, ' ')
+    .trim();
+  
+  // Ensure proper capitalization at the beginning of the statement
+  if (processed.length > 0) {
+    processed = processed.charAt(0).toUpperCase() + processed.slice(1);
+  }
+  
+  // If statement ends without punctuation, add a period for proper sentence structure
+  if (!/[.!?]$/.test(processed)) {
+    processed += '.';
+  }
+  
+  return processed;
+}
+
+/**
+ * Find the most relevant section of an article extract based on the statement
+ */
+function findRelevantExcerpt(extract: string, statement: string, searchTerm: string): string {
+  // Split extract into sentences
+  const sentences = extract.split(/(?<=[.!?])\s+/);
+  
+  // If the extract is short, just return it with ellipsis
+  if (extract.length < 200) {
+    return extract;
+  }
+  
+  // Get keywords from both the statement and search term
+  const statementKeywords = statement.toLowerCase().split(/\W+/).filter(word => word.length > 3);
+  const searchKeywords = searchTerm.toLowerCase().split(/\W+/).filter(word => word.length > 3);
+  const allKeywords = [...new Set([...statementKeywords, ...searchKeywords])];
+  
+  // Score each sentence based on keyword matches
+  const scoredSentences = sentences.map(sentence => {
+    const sentenceLower = sentence.toLowerCase();
+    let score = 0;
+    
+    // Check for keyword matches
+    allKeywords.forEach(keyword => {
+      if (sentenceLower.includes(keyword)) {
+        score += 1;
+      }
+    });
+    
+    // Bonus points for sentences containing named entities from the statement
+    const namedEntities = statement.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+    namedEntities.forEach(entity => {
+      if (sentenceLower.includes(entity.toLowerCase())) {
+        score += 2;
+      }
+    });
+    
+    return { sentence, score };
+  });
+  
+  // Sort sentences by score (highest first)
+  scoredSentences.sort((a, b) => b.score - a.score);
+  
+  // Get top 2-3 most relevant sentences
+  const relevantSentences = scoredSentences.slice(0, 3)
+    .filter(item => item.score > 0) // Only include sentences with some relevance
+    .map(item => item.sentence);
+  
+  // If we couldn't find any relevant sentences, return the beginning of the extract
+  if (relevantSentences.length === 0) {
+    return extract.substring(0, 200) + "...";
+  }
+  
+  // Join the relevant sentences and truncate if needed
+  let excerpt = relevantSentences.join(' ');
+  if (excerpt.length > 300) {
+    excerpt = excerpt.substring(0, 300) + "...";
+  } else if (excerpt.length < extract.length) {
+    excerpt += "...";
+  }
+  
+  return excerpt;
+}
+
+/**
  * Extract a search term from a statement, optimized for news headlines
+ * Enhanced to better understand user intent and keyword importance
  */
 function getSearchTerm(statement: string): string {
+  // Pre-process the statement to fix common typos and misspellings
+  let processedStatement = statement
+    .replace(/\b(\w+)wih(\b)/gi, '$1with$2')  // Fix common "wih" typo
+    .replace(/\b(\w+)teh(\b)/gi, '$1the$2')   // Fix common "teh" typo
+    .replace(/\bthier\b/gi, 'their')          // Fix common "thier" typo
+    .replace(/\bdidnt\b/gi, "didn't")         // Fix missing apostrophes
+    .replace(/\bwont\b/gi, "won't")
+    .replace(/\bcant\b/gi, "can't")
+    .replace(/\bhasnt\b/gi, "hasn't");
+
   // Find entities (names, organizations, locations) which are often capitalized in news headlines
-  const potentialEntities = statement.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+  // Extended to capture multi-word entities with more complex patterns
+  const potentialEntities = processedStatement.match(/\b[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|\b(?:of|the|and|in|on|at)\b))*\b/g) || [];
+  
+  // Extract locations, which are especially important in news
+  const locationPattern = /\b(?:America|Russia|China|Europe|Israel|Palestine|Gaza|Ukraine|Africa|Asia|Australia|Canada|Mexico|Brazil|India|Japan|Korea|France|Germany|Italy|Spain|UK|United Kingdom|United States|USA|US|EU|Middle East|North|South|East|West)\b/gi;
+  const locations = processedStatement.match(locationPattern) || [];
+  
+  // Extract organization names, which are critical in news
+  const orgPattern = /\b(?:UN|NATO|WHO|FBI|CIA|NSA|Google|Microsoft|Apple|Amazon|Tesla|Facebook|Twitter|Hamas|Congress|Senate|House|Pentagon|White House|Government|Police|Military|Army|Navy|Air Force|Republicans|Democrats|GOP)\b/gi;
+  const organizations = processedStatement.match(orgPattern) || [];
   
   // Remove common words and keep important ones, particularly nouns and verbs common in news
-  const words = statement.toLowerCase()
-    .replace(/[^\w\s]/gi, '')
-    .split(' ')
-    .filter(word => 
-      word.length > 2 && 
-      !['the', 'and', 'that', 'this', 'with', 'from', 'will', 'have', 'has', 'had', 
-        'would', 'could', 'should', 'says', 'said', 'claims', 'reported'].includes(word)
-    );
-  
-  // Extract dates which are common in news articles
-  const dates = statement.match(/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b|\b\d{4}\b|\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/gi) || [];
-  
-  // Combine entities, important words, and dates, prioritizing entities
-  const searchTerms = [
-    ...potentialEntities.slice(0, 3).map(term => term.toLowerCase()),
-    ...words.slice(0, 6),
-    ...dates.slice(0, 1)
+  // Expanded stopwords list to better isolate key concepts
+  const stopwords = [
+    'the', 'and', 'that', 'this', 'with', 'from', 'will', 'have', 'has', 'had', 
+    'would', 'could', 'should', 'says', 'said', 'claims', 'reported', 'for', 'are', 'is',
+    'was', 'were', 'been', 'being', 'they', 'them', 'their', 'there', 'here', 'when',
+    'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'some',
+    'such', 'than', 'too', 'very', 'can', 'cant', 'cannot', 'not', 'only', 'own'
   ];
   
-  // Remove duplicates using an object approach instead of Set
+  const words = processedStatement.toLowerCase()
+    .replace(/[^\w\s-]/gi, '') // Keep hyphens as they're often meaningful in compound terms
+    .split(/\s+/)
+    .filter(word => 
+      word.length > 2 && 
+      !stopwords.includes(word)
+    );
+  
+  // Prioritize words that appear to be news keywords
+  const newsKeywords = [
+    'war', 'peace', 'attack', 'killed', 'died', 'crisis', 'election', 'vote', 'pandemic',
+    'vaccine', 'conflict', 'protest', 'economy', 'inflation', 'climate', 'disaster',
+    'shooting', 'legislation', 'bill', 'law', 'court', 'ruling', 'decision', 'agreement',
+    'deal', 'treaty', 'scandal', 'investigation', 'announced', 'launched', 'accused',
+    'charged', 'arrested', 'convicted', 'sentenced', 'released', 'banned', 'approved',
+    'rejected', 'resigned', 'fired', 'appointed', 'elected', 'defeated', 'won', 'lost'
+  ];
+  
+  const prioritizedWords = words.sort((a, b) => {
+    const aIsKeyword = newsKeywords.includes(a);
+    const bIsKeyword = newsKeywords.includes(b);
+    
+    if (aIsKeyword && !bIsKeyword) return -1;
+    if (!aIsKeyword && bIsKeyword) return 1;
+    return 0;
+  });
+  
+  // Extract dates which are common in news articles - expanded pattern
+  const datePatterns = [
+    // MM/DD/YYYY
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/,
+    // YYYY
+    /\b(?:19[0-9]{2}|20[0-9]{2})\b/,
+    // Month name, day, year
+    /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}\b/i,
+    // Relative time references
+    /\b(?:yesterday|today|last week|last month|last year|this week|this month|this year)\b/i
+  ];
+  
+  const dates = datePatterns.flatMap(pattern => processedStatement.match(pattern) || []);
+  
+  // Extract numbers which are meaningful in news (percentages, statistics, counts)
+  const numbers = processedStatement.match(/\b\d+(?:\.\d+)?(?:\s+(?:percent|million|billion|trillion|people|deaths|cases))?\b/gi) || [];
+  
+  // Combine all extracted elements, prioritizing entities, locations, and organizations
+  const searchTerms = [
+    ...potentialEntities.slice(0, 3).map(term => term.toLowerCase()),
+    ...locations.slice(0, 2).map(loc => loc.toLowerCase()),
+    ...organizations.slice(0, 2).map(org => org.toLowerCase()),
+    ...prioritizedWords.slice(0, 6),
+    ...dates.slice(0, 1),
+    ...numbers.slice(0, 2)
+  ];
+  
+  // Remove duplicates with improved handling
   const uniqueTermsObj: {[key: string]: boolean} = {};
   searchTerms.forEach(term => {
-    uniqueTermsObj[term] = true;
+    // Skip empty strings and very short terms
+    if (term && term.length > 1) {
+      // Normalize to lower case and trim whitespace
+      const normalizedTerm = term.toLowerCase().trim();
+      uniqueTermsObj[normalizedTerm] = true;
+    }
   });
   const uniqueTerms = Object.keys(uniqueTermsObj);
   
-  // Return the most relevant search terms (up to 7)
-  return uniqueTerms.slice(0, 7).join(' ');
+  // If we still have a large number of terms, prioritize based on probable importance
+  let finalTerms = uniqueTerms;
+  if (uniqueTerms.length > 8) {
+    // For very long queries, create a scoring system to select the most important terms
+    const termScores: {[key: string]: number} = {};
+    
+    uniqueTerms.forEach(term => {
+      let score = 0;
+      // Capitalized terms from the original statement get higher scores
+      if (potentialEntities.some(entity => entity.toLowerCase() === term)) score += 3;
+      // Location and organization terms get high scores
+      if (locations.some(loc => loc.toLowerCase() === term)) score += 3;
+      if (organizations.some(org => org.toLowerCase() === term)) score += 3;
+      // News keywords get medium scores
+      if (newsKeywords.includes(term)) score += 2;
+      // Numbers and dates get medium scores
+      if (numbers.some(num => num.toLowerCase() === term)) score += 2;
+      if (dates.some(date => date.toLowerCase() === term)) score += 2;
+      // All other terms get a base score of 1
+      score += 1;
+      
+      termScores[term] = score;
+    });
+    
+    // Sort terms by score in descending order
+    finalTerms = uniqueTerms.sort((a, b) => termScores[b] - termScores[a]);
+  }
+  
+  // Return the most relevant search terms (up to 8)
+  return finalTerms.slice(0, 8).join(' ');
 }
 
 // Interface for Wikipedia search result
@@ -111,9 +332,15 @@ interface WikiSearchResult {
 
 /**
  * Search Wikipedia for articles related to the search term
+ * Enhanced with multi-query strategy for better news claim analysis
  */
 async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> {
   const endpoint = 'https://en.wikipedia.org/w/api.php';
+  
+  // Create multiple search approaches for thorough coverage
+  const searchQueries = generateSearchQueries(searchTerm);
+  
+  // Execute primary search
   const params = new URLSearchParams({
     action: 'query',
     list: 'search',
@@ -130,45 +357,148 @@ async function searchWikipedia(searchTerm: string): Promise<WikiSearchResult[]> 
   }
   
   const data = await response.json();
-
-  // Also search for contradictory information by adding "not" to the search term
-  const contradictorySearchTerm = `not ${searchTerm}`;
-  const contradictoryParams = new URLSearchParams({
-    action: 'query',
-    list: 'search',
-    srsearch: contradictorySearchTerm,
-    srlimit: '10',
-    format: 'json',
-    origin: '*'
+  
+  // Use an object to track unique results by pageid
+  const existingPageIds: {[key: number]: boolean} = {};
+  const allResults = [...data.query.search];
+  allResults.forEach((result: WikiSearchResult) => {
+    existingPageIds[result.pageid] = true;
   });
 
+  // Execute additional searches in parallel with alternative search strategies
   try {
-    const contradictoryResponse = await fetch(`${endpoint}?${contradictoryParams}`);
-    if (contradictoryResponse.ok) {
-      const contradictoryData = await contradictoryResponse.json();
-      // Combine both result sets, removing duplicates by pageid
-      const allResults = [...data.query.search];
-      // Use an object instead of Set for compatibility
-      const existingPageIds: {[key: number]: boolean} = {};
-      allResults.forEach((result: WikiSearchResult) => {
-        existingPageIds[result.pageid] = true;
-      });
-      
-      contradictoryData.query.search.forEach((result: WikiSearchResult) => {
-        if (!existingPageIds[result.pageid]) {
-          allResults.push(result);
-          existingPageIds[result.pageid] = true;
+    const additionalSearches = await Promise.allSettled(
+      searchQueries.map(async (query) => {
+        const queryParams = new URLSearchParams({
+          action: 'query',
+          list: 'search',
+          srsearch: query,
+          srlimit: '10',
+          format: 'json',
+          origin: '*'
+        });
+        
+        const res = await fetch(`${endpoint}?${queryParams}`);
+        if (res.ok) {
+          return await res.json();
         }
-      });
-      
-      return allResults;
-    }
+        return null;
+      })
+    );
+    
+    // Process the results from all searches
+    additionalSearches.forEach((result) => {
+      if (result.status === 'fulfilled' && result.value) {
+        const searchData = result.value;
+        if (searchData.query && searchData.query.search) {
+          // Add unique results to our collection
+          searchData.query.search.forEach((item: WikiSearchResult) => {
+            if (!existingPageIds[item.pageid]) {
+              allResults.push(item);
+              existingPageIds[item.pageid] = true;
+            }
+          });
+        }
+      }
+    });
   } catch (error) {
-    console.error("Error fetching contradictory data:", error);
-    // Continue with original results if contradictory search fails
+    console.error("Error in additional searches:", error);
+    // Continue with what we have if any of the additional searches fail
   }
 
-  return data.query.search;
+  return allResults;
+}
+
+/**
+ * Generate multiple search query variations to improve search coverage
+ * Especially important for news claims which may have different phrasings
+ */
+function generateSearchQueries(searchTerm: string): string[] {
+  const queries: string[] = [];
+  
+  // Add negation search to find contradictory information
+  queries.push(`not ${searchTerm}`);
+
+  // Pull out likely entities and create focused queries
+  const entities = searchTerm.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b/g) || [];
+  if (entities.length > 0) {
+    // Create combinations of the most important entities (up to 3)
+    const topEntities = entities.slice(0, 3);
+    topEntities.forEach(entity => {
+      queries.push(entity);
+    });
+    
+    // If we have multiple entities, combine them in pairs
+    if (topEntities.length >= 2) {
+      for (let i = 0; i < topEntities.length - 1; i++) {
+        for (let j = i + 1; j < topEntities.length; j++) {
+          queries.push(`${topEntities[i]} ${topEntities[j]}`);
+        }
+      }
+    }
+  }
+  
+  // Extract locations for location-specific searches
+  const locationPatterns = [
+    /\b(?:America|Russia|China|Europe|Israel|Palestine|Gaza|Ukraine|Africa|Asia|Australia|Canada|Mexico|Brazil|India|Japan|Korea|France|Germany|Italy|Spain|UK|United Kingdom|United States|USA|US|EU|Middle East|North|South|East|West)\b/gi
+  ];
+  
+  const locations = locationPatterns.flatMap(pattern => searchTerm.match(pattern) || []);
+  if (locations.length > 0) {
+    // Add location-specific queries
+    locations.forEach(location => {
+      // If location is part of the original search term, use it with additional context
+      if (queries.findIndex(q => q === location) === -1) {
+        queries.push(location);
+      }
+      
+      // For news, locations often appear with words like "conflict", "war", etc.
+      const newsKeywords = ['war', 'conflict', 'crisis', 'attack', 'elections', 'government'];
+      newsKeywords.forEach(keyword => {
+        if (searchTerm.toLowerCase().includes(keyword)) {
+          queries.push(`${location} ${keyword}`);
+        }
+      });
+    });
+  }
+  
+  // Extract years and dates for time-specific searches
+  const years = searchTerm.match(/\b(?:19|20)\d{2}\b/g) || [];
+  if (years.length > 0) {
+    years.forEach(year => {
+      // Add the year with the first entity for better context
+      if (entities.length > 0) {
+        queries.push(`${entities[0]} ${year}`);
+      }
+      
+      // If we identified locations, add year+location queries
+      if (locations.length > 0) {
+        queries.push(`${locations[0]} ${year}`);
+      }
+    });
+  }
+  
+  // Add news-specific fact-checking search patterns
+  const newsFactChecking = ['fact check', 'debunked', 'misinformation', 'disinformation'];
+  if (searchTerm.split(' ').length > 3) {
+    // Only add fact-checking terms for longer statements that might be claims
+    newsFactChecking.forEach(term => {
+      queries.push(`${term} ${searchTerm.split(' ').slice(0, 4).join(' ')}`);
+    });
+  }
+  
+  // Filter out duplicates and very short queries
+  const uniqueQueries = new Set<string>();
+  queries.forEach(query => {
+    // Normalize and clean up the query
+    const normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.length > 3 && normalizedQuery !== searchTerm.toLowerCase()) {
+      uniqueQueries.add(normalizedQuery);
+    }
+  });
+  
+  // Return unique queries, limited to prevent too many API calls
+  return Array.from(uniqueQueries).slice(0, 5);
 }
 
 /**
