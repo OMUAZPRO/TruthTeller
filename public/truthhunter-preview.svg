@@ -1,0 +1,25 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#f8fafc" />
+  <rect x="0" y="0" width="1200" height="630" fill="url(#grad)" />
+  
+  <!-- Logo -->
+  <g transform="translate(500, 180)">
+    <circle cx="100" cy="100" r="95" stroke="#3b82f6" stroke-width="5" fill="white" />
+    <path d="M100 35L150 135H50L100 35Z" fill="#3b82f6" />
+    <circle cx="100" cy="100" r="20" fill="white" />
+  </g>
+  
+  <!-- Text -->
+  <text x="600" y="420" font-family="Inter, sans-serif" font-size="72" font-weight="700" text-anchor="middle" fill="#1e293b">TruthHunter</text>
+  <text x="600" y="480" font-family="Inter, sans-serif" font-size="36" font-weight="400" text-anchor="middle" fill="#475569">News Verification Platform</text>
+  <text x="600" y="540" font-family="Inter, sans-serif" font-size="24" font-weight="400" text-anchor="middle" fill="#64748b">Free • Fast • Reliable</text>
+  
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#dbeafe" stop-opacity="0.4" />
+      <stop offset="1" stop-color="#bfdbfe" stop-opacity="0.7" />
+    </linearGradient>
+  </defs>
+</svg>

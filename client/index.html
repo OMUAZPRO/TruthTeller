@@ -3,11 +3,133 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TruthHunter - Verify news statements instantly with advanced AI-powered fact checking">
+  <meta name="keywords" content="fact checking, news verification, truth finder, fake news detector, news analysis">
+  <meta name="author" content="TruthHunter Team">
+  
+  <!-- Open Graph / Social Media Meta Tags -->
+  <meta property="og:title" content="TruthHunter - News Verification Platform">
+  <meta property="og:description" content="Verify the accuracy of news statements with our free, AI-powered fact-checking tool">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="/truthhunter-preview.png">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  
   <title>TruthHunter - News Verification Platform</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Preload important assets -->
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  
+  <!-- Custom styles -->
+  <style>
+    /* Initial loader styles */
+    .initial-loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      width: 100%;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%);
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+    
+    .initial-loader-logo {
+      width: 100px;
+      height: 100px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+    
+    .initial-loader-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #3a4150;
+      background: linear-gradient(90deg, #3a4150, #64748b);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #f9fafb;
+      overflow-x: hidden;
+    }
+    
+    #root {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+  </style>
 </head>
 <body>
+  <!-- Initial loading screen -->
+  <div class="initial-loader" id="initialLoader">
+    <div class="initial-loader-logo">
+      <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="50" cy="50" r="45" stroke="#3b82f6" stroke-width="4" fill="transparent" />
+        <path d="M50 20C66.5685 20 80 33.4315 80 50C80 66.5685 66.5685 80 50 80" stroke="#3b82f6" stroke-width="4" stroke-linecap="round">
+          <animateTransform 
+            attributeName="transform" 
+            attributeType="XML" 
+            type="rotate"
+            dur="1s" 
+            from="0 50 50"
+            to="360 50 50" 
+            repeatCount="indefinite" />
+        </path>
+        <path d="M50 35L65 60H35L50 35Z" fill="#3b82f6">
+          <animate 
+            attributeName="opacity"
+            values="0.7;1;0.7" 
+            dur="2s" 
+            repeatCount="indefinite" />
+        </path>
+      </svg>
+    </div>
+    <div class="initial-loader-text">TruthHunter Loading...</div>
+  </div>
+
+  <!-- Application root -->
   <div id="root"></div>
+  
+  <!-- Main application script -->
   <script type="module" src="/src/main.tsx"></script>
+  
+  <!-- Script to hide loader once app is loaded -->
+  <script>
+    window.addEventListener('load', function() {
+      // App has loaded, fade out the loader
+      setTimeout(function() {
+        const loader = document.getElementById('initialLoader');
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(function() {
+            loader.style.display = 'none';
+          }, 500);
+        }
+      }, 1000);
+    });
+  </script>
 </body>
 </html>
